@@ -3,7 +3,7 @@
 #include <winuser.h>
 
 HANDLE getData();
-void getData(char *val);
+void setData(char *val);
 
 int main() {
     if (OpenClipboard(NULL) == 0)
