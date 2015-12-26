@@ -4,9 +4,36 @@
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
+int sendData();
+
+void Stealth();
+
 HANDLE getData();
 
 int main() {
+    system("title CLIENT");
+    Stealth();
+    while(1) {
+        if ((GetAsyncKeyState(67) >> 15) != 0 && (GetAsyncKeyState(VK_CONTROL) >> 15) != 0) { 
+            if (MessageBox(NULL,
+                "Send recently copied text to other PC?",
+                "Send Authorization",
+                MB_YESNO |
+                MB_ICONQUESTION) == IDYES) {
+                sendData();
+            }
+        }
+        SleepEx(1,1); 
+    } 
+    
+    return 0;
+}
+
+HANDLE getData() {
+    return GetClipboardData(CF_TEXT);
+}
+
+int sendData() {
     if (OpenClipboard(NULL) == 0)
         puts("No such luck!");
     WSADATA wsa;
@@ -29,6 +56,11 @@ int main() {
 
     if (connect(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
         puts("No such luck!");
+        MessageBox(NULL,
+                "Couldn't connect",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
         return 1;
     }
 
@@ -39,9 +71,17 @@ int main() {
     if (send(s, clipboard, strlen(clipboard), 0) < 0)
         puts("send failed");
     puts("data sent!");
+    MessageBox(NULL,
+                "Sent!",
+                "Success!",
+                MB_OK |
+                MB_ICONINFORMATION);
     return 0;
 }
 
-HANDLE getData() {
-    return GetClipboardData(CF_TEXT);
+void Stealth(){
+    HWND Stealth;
+    AllocConsole();
+    Stealth = FindWindowA("ConsoleWindowClass", NULL);
+    ShowWindow(Stealth,0);
 }
