@@ -43,7 +43,7 @@ int main() {
     reply[recv_size] = '\0';
     puts(reply);
     setData(reply); 
-    puts("Copied to Clipboard")
+    puts("Copied to Clipboard");
     closesocket(s);
     WSACleanup();
 	return 0;
