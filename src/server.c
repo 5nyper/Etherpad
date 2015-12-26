@@ -7,6 +7,7 @@
 void setData(char *val);
 
 int main() {
+	system("title SERVER");
 	WSADATA wsa;
     SOCKET s, new_socket;
     int c, recv_size;
@@ -29,23 +30,28 @@ int main() {
     if (bind(s,(struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
     	puts("Bind failed");
     puts("SUCCESS");
+	while(1) {
+	    listen(s, 3);
 
-    listen(s, 3);
-
-    c = sizeof(struct sockaddr_in);
-    new_socket = accept(s, (struct sockaddr *)&client, &c);
-    if (new_socket == INVALID_SOCKET)
-    	puts("FAILED");
-    puts("Got connection!");
-    
-    if ((recv_size = recv(new_socket, reply, 2000, 0)) == SOCKET_ERROR)
-        printf("failed to recv %d", WSAGetLastError());
-    reply[recv_size] = '\0';
-    puts(reply);
-    setData(reply); 
-    puts("Copied to Clipboard");
+	    c = sizeof(struct sockaddr_in);
+	    new_socket = accept(s, (struct sockaddr *)&client, &c);
+	    if (new_socket == INVALID_SOCKET);
+	    	puts("FAILED");
+	    puts("Got connection!");
+	    if ((recv_size = recv(new_socket, reply, 2000, 0)) == SOCKET_ERROR)
+	        printf("failed to recv %d", WSAGetLastError());
+	    reply[recv_size] = '\0';
+	    puts(reply);
+	    setData(reply);
+	    MessageBox(NULL,
+                "New data copied to Clipboard from peer!",
+                "Attention!",
+                MB_OK |
+                MB_ICONWARNING);
+	}
     closesocket(s);
     WSACleanup();
+    getchar();
 	return 0;
 }
 
