@@ -4,22 +4,28 @@
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
+size_t strlen_s(const char *s, size_t maxlen);
 int sendData();
 
 void Stealth();
 
-HANDLE getData();
+char *getData();
 
 int main() {
+    char *current = getData();
+    printf("%s\n", current);
     system("title CLIENT");
-    Stealth();
+    //Stealth();
     while(1) {
-        if ((GetAsyncKeyState(67) >> 15) != 0 && (GetAsyncKeyState(VK_CONTROL) >> 15) != 0) { 
+        if (strcmp(current, getData()) != 0) {
+            printf("%s\n", current);
+            printf("%s\n", getData());
             if (MessageBox(NULL,
                 "Send recently copied text to other PC?",
                 "Send Authorization",
                 MB_YESNO |
                 MB_ICONQUESTION) == IDYES) {
+                strcpy(current, getData());
                 sendData();
             }
         }
@@ -29,8 +35,16 @@ int main() {
     return 0;
 }
 
-HANDLE getData() {
-    return GetClipboardData(CF_TEXT);
+char *getData() {
+    if (OpenClipboard(NULL) == 0)
+        puts("No such luck!");
+    HGLOBAL var = GetClipboardData(CF_TEXT);
+    char *data = GlobalLock(var);
+    int size = GlobalSize(var);
+    char *result = malloc(strlen_s(data, size+1));
+    memcpy(result, data, size);
+    GlobalUnlock(var);
+    return result;
 }
 
 int sendData() {
@@ -84,4 +98,10 @@ void Stealth(){
     AllocConsole();
     Stealth = FindWindowA("ConsoleWindowClass", NULL);
     ShowWindow(Stealth,0);
+}
+size_t strlen_s(const char *str, size_t maxlen)
+{
+     size_t i;
+     for(i = 0; i < maxlen && str[i]; i++);
+     return i;
 }
