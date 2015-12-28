@@ -4,18 +4,21 @@
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
+typedef enum {
+    FAILURE,
+    SUCCESS,
+} RESULT;
+
 size_t strlen_s(const char *s, size_t maxlen);
-int sendData();
-
+RESULT sendData();
 void Stealth();
-
 char *getData();
 
 int main() {
     char *current = getData();
     printf("%s\n", current);
     system("title CLIENT");
-    //Stealth();
+    Stealth();
     while(1) {
         if (strcmp(current, getData()) != 0) {
             printf("%s\n", current);
@@ -26,8 +29,23 @@ int main() {
                 MB_YESNO |
                 MB_ICONQUESTION) == IDYES) {
                 strcpy(current, getData());
-                sendData();
+                if(sendData() != SUCCESS){
+                    MessageBox(NULL,
+                            "Unable to Send!",
+                            "Failure",
+                            MB_OK |
+                            MB_ICONWARNING);
+                }
+                else {
+                 MessageBox(NULL,
+                            "Sent!",
+                            "Success!",
+                            MB_OK |
+                            MB_ICONINFORMATION);
+                }
             }
+            else 
+                strcpy(current, getData());
         }
         SleepEx(1,1); 
     } 
@@ -36,8 +54,14 @@ int main() {
 }
 
 char *getData() {
-    if (OpenClipboard(NULL) == 0)
-        puts("No such luck!");
+    if (OpenClipboard(NULL) == 0){
+        MessageBox(NULL,
+                "Unable to OpenClipboard!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return "(null)";
+    }
     HGLOBAL var = GetClipboardData(CF_TEXT);
     char *data = GlobalLock(var);
     int size = GlobalSize(var);
@@ -47,21 +71,39 @@ char *getData() {
     return result;
 }
 
-int sendData() {
-    if (OpenClipboard(NULL) == 0)
-        puts("No such luck!");
+RESULT sendData() {
+    if (OpenClipboard(NULL) == 0){
+        MessageBox(NULL,
+                "Unable to OpenClipboard!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
     WSADATA wsa;
     SOCKET s;
     struct sockaddr_in server;
     char *clipboard;
 
     puts("Starting Winsock..");
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0)
-        puts("ERR, :(");
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        MessageBox(NULL,
+                "Unable to start WinSock!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
     puts("Started!");
     
-    if((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
-        puts("failed");
+    if((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET){
+        MessageBox(NULL,
+                "Unable to start Socket!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
     puts("Socket init!");
 
     server.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -75,22 +117,23 @@ int sendData() {
                 "Failure",
                 MB_OK |
                 MB_ICONWARNING);
-        return 1;
+        return FAILURE;
     }
 
     puts("CONNECTED");
 
     clipboard = (char *) getData();
     puts(clipboard);
-    if (send(s, clipboard, strlen(clipboard), 0) < 0)
-        puts("send failed");
-    puts("data sent!");
-    MessageBox(NULL,
-                "Sent!",
-                "Success!",
+    if (send(s, clipboard, strlen(clipboard), 0) < 0) {
+        MessageBox(NULL,
+                "Unable to send data!",
+                "Failure",
                 MB_OK |
-                MB_ICONINFORMATION);
-    return 0;
+                MB_ICONWARNING);
+        return FAILURE;
+    }
+    puts("data sent!");
+    return SUCCESS;
 }
 
 void Stealth(){
