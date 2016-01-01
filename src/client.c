@@ -64,7 +64,8 @@ char *getData() {
     HGLOBAL var = GetClipboardData(CF_TEXT);
     char *data = GlobalLock(var);
     int size = GlobalSize(var);
-    char *result = malloc(strlen_s(data, size+1));
+    char *result = malloc(strlen_s(data, size)+1);
+    result[size] = '\0';
     memcpy(result, data, size);
     GlobalUnlock(var);
     return result;
