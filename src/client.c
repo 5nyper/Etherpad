@@ -1,87 +1,150 @@
-extern crate user32;
-extern crate kernel32;
+#include <stdio.h>
+#include <windows.h>
+#include <winuser.h>
+#include <winsock2.h>
 
-#[allow(deprecated)]
-use std::io::prelude::*;
-use std::net::TcpStream;
-use std::ptr;
+typedef enum {
+    FAILURE,
+    SUCCESS,
+} RESULT;
 
-const ERROR_ACCESS_DENIED: u32 = 0x5;
-const ERROR_CLIPBOARD_NOT_OPEN: u32 = 0x58A;
+size_t strlen_s(const char *s, size_t maxlen);
+RESULT sendData();
+void Stealth();
+char *getData();
 
-struct Clipboard;
-
-impl Clipboard {
-    fn open() -> Result<Clipboard, WinApiError> {
-        unsafe {
-            let _open = user32::OpenClipboard(ptr::null_mut());
-            try!(WinApiError::from_global());
-            return Ok(Clipboard)
+int main() {
+    char *current = getData();
+    printf("%s\n", current);
+    system("title CLIENT");
+    Stealth();
+    while(1) {
+        if (strcmp(current, getData()) != 0) {
+            printf("%s\n", current);
+            printf("%s\n", getData());
+            if (MessageBox(NULL,
+                "Send recently copied text to other PC?",
+                "Send Authorization",
+                MB_YESNO |
+                MB_ICONQUESTION) == IDYES) {
+                strcpy(current, getData());
+                if(sendData() != SUCCESS){
+                    MessageBox(NULL,
+                            "Unable to Send!",
+                            "Failure",
+                            MB_OK |
+                            MB_ICONWARNING);
+                }
+                else {
+                 MessageBox(NULL,
+                            "Sent!",
+                            "Success!",
+                            MB_OK |
+                            MB_ICONINFORMATION);
+                }
+            }
+            else 
+                strcpy(current, getData());
         }
-    }
-    fn get_data(&self) -> Result<String, WinApiError> {
-        let value: String;
-        unsafe {
-            let var = user32::GetClipboardData(13 as u32);
-            try!(WinApiError::from_global());
-            let data = kernel32::GlobalLock(var) as *mut u16;
-            let len = rust_strlen16(data);
-            let raws = std::slice::from_raw_parts(data, len);
-            value = String::from_utf16_lossy(raws);
-            kernel32::GlobalUnlock(var);
-        }
-        Ok(value)
-    }
+        SleepEx(1,1); 
+    } 
+    
+    return 0;
 }
 
-impl Drop for Clipboard {
-    fn drop(&mut self) {
-        unsafe {user32::CloseClipboard();}
+char *getData() {
+    if (OpenClipboard(NULL) == 0){
+        MessageBox(NULL,
+                "Unable to OpenClipboard!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return "(null)";
     }
-}
-#[derive(Debug, Copy, Clone)]
-struct WinApiError(u32);                //help from shepmaster
-
-impl WinApiError {
-    fn from_global() -> Result<(), WinApiError> {
-        let val = unsafe { kernel32::GetLastError() };
-        if val != 0 {
-            Err(WinApiError(val))
-        } else {
-            Ok(())
-        }
-    }
-}
-fn main() {
-    let mut current = String::new();
-    loop {
-        let clip = match Clipboard::open() {
-            Err(WinApiError(ERROR_ACCESS_DENIED)) |
-            Err(WinApiError(ERROR_CLIPBOARD_NOT_OPEN)) | Err(WinApiError(_)) => {
-                println!("{:?}", WinApiError::from_global());
-                continue;
-            },
-            Ok(c) => c,
-        };
-
-        if current != clip.get_data().unwrap() {
-            current = clip.get_data().unwrap();
-            let mut client = TcpStream::connect("127.0.0.1:8080").unwrap();
-            let message = clip.get_data().expect("Could not get Data!");
-            println!("{}", message);
-            let _ = client.write(message.as_bytes());
-            println!("Sent!");
-        }
-        std::thread::sleep_ms(250);
-    }
+    HGLOBAL var = GetClipboardData(CF_TEXT);
+    char *data = GlobalLock(var);
+    int size = GlobalSize(var);
+    char *result = malloc(strlen_s(data, size)+1);
+    result[size] = '\0';
+    memcpy(result, data, size);
+    GlobalUnlock(var);
+    return result;
 }
 
-
-#[inline(always)]                                       // used from clipboard-win, not mine
-unsafe fn rust_strlen16(buff_p: *mut u16) -> usize {
-    let mut i: isize = 0;
-    while *buff_p.offset(i) != 0 {
-        i += 1;
+RESULT sendData() {
+    if (OpenClipboard(NULL) == 0){
+        MessageBox(NULL,
+                "Unable to OpenClipboard!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
     }
-    return i as usize
+    WSADATA wsa;
+    SOCKET s;
+    struct sockaddr_in server;
+    char *clipboard;
+
+    puts("Starting Winsock..");
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        MessageBox(NULL,
+                "Unable to start WinSock!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
+    puts("Started!");
+    
+    if((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET){
+        MessageBox(NULL,
+                "Unable to start Socket!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
+    puts("Socket init!");
+
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons(8080);
+
+    if (connect(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        puts("No such luck!");
+        MessageBox(NULL,
+                "Couldn't connect",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
+
+    puts("CONNECTED");
+
+    clipboard = (char *) getData();
+    puts(clipboard);
+    if (send(s, clipboard, strlen(clipboard), 0) < 0) {
+        MessageBox(NULL,
+                "Unable to send data!",
+                "Failure",
+                MB_OK |
+                MB_ICONWARNING);
+        return FAILURE;
+    }
+    puts("data sent!");
+    return SUCCESS;
+}
+
+void Stealth(){
+    HWND Stealth;
+    AllocConsole();
+    Stealth = FindWindowA("ConsoleWindowClass", NULL);
+    ShowWindow(Stealth,0);
+}
+size_t strlen_s(const char *str, size_t maxlen)
+{
+     size_t i;
+     for(i = 0; i < maxlen && str[i]; i++);
+     return i;
 }
